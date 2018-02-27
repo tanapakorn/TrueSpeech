@@ -1,10 +1,13 @@
 package com.tanapakorn.truespeech;
 
+import android.content.Context;
+import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -16,9 +19,10 @@ import com.tanapakorn.truespeech.viewmodel.TextViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, TextToSpeech.OnInitListener{
 
     // View references
     private RecyclerView mRvChatHistory;
@@ -34,6 +38,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private EditText mEditText;
     private RecyclerAdapter rvAdapter;
 
+    private TextToSpeech mTTS;
+
+    private TextToSpeech.OnInitListener mTtsListener = new TextToSpeech.OnInitListener() {
+        @Override
+        public void onInit(int status) {
+
+        }
+    };
+
     private final SpeechManager.ServiceListener mSpeechServiceListener = new SpeechManager.ServiceListener() {
         @Override
         public void onSpeechRecognized(final String text, final boolean isFinal) {
@@ -46,8 +59,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     public void run() {
                         if(rvAdapter != null){
                             rvAdapter.add(new TextViewModel(ChatContract.VIEW_TYPE_MY_TEXT).text(text));
+                            mTTS.speak( text, TextToSpeech.QUEUE_ADD, null);
                         }
+
                         mTextResult.setText(text);
+//                        mEditText.setText(text);
                     }
                 });
             }
@@ -59,10 +75,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+        mTTS = new TextToSpeech(this, mTtsListener);
+        mTTS.setLanguage(Locale.US);
+
         mRvChatHistory = (RecyclerView)findViewById(R.id.rvChatHistory);
         audioFileBtn = (Button)findViewById(R.id.audio_file);
         mTextResult = (TextView)findViewById(R.id.result);
-        mEditText = (EditText)findViewById(R.id.edit_text);
+//        mEditText = (EditText)findViewById(R.id.edit_text);
         mMicBtn = (ImageButton)findViewById(R.id.push_to_talk_button);
         mMicCloseBtn = (ImageButton)findViewById(R.id.push_to_talk_end_button);
 
@@ -84,13 +104,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void onStatusChanged(int pStatus) {
                 switch(pStatus){
                     case SpeechManager.STATE_IDLE:
-                        mEditText.setText(R.string.string_state_idle);
+//                        mEditText.setText(R.string.string_state_idle);
                         break;
                     case SpeechManager.STATE_RECORDING:
-                        mEditText.setText(R.string.string_listening);
+//                        mEditText.setText(R.string.string_listening);
                         break;
                     default:
-                        mEditText.setText("");
+//                        mEditText.setText("");
                         break;
                 }
             }
@@ -137,5 +157,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mManager.stopVoiceRecorder();
                 break;
         }
+    }
+
+    @Override
+    public void onInit(int status) {
+
     }
 }

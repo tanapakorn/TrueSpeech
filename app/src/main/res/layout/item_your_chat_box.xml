@@ -7,15 +7,20 @@
     android:paddingRight="8dp"
     android:layout_margin="16dp">
 
-    <TextView
-        android:id="@+id/tvChatBox"
+    <FrameLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="left"
         android:background="@drawable/shape_bg_incoming_bubble"
         android:paddingLeft="16dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:text="TextView"
-        android:textSize="@dimen/text_medium" />
+        android:layout_gravity="left">
+
+        <TextView
+            android:id="@+id/tvChatBox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="TextView"
+            android:textSize="@dimen/text_medium"
+            android:textColor="#151515"/>
+    </FrameLayout>
 </LinearLayout>
