@@ -1,121 +1,52 @@
 package com.tanapakorn.truespeech;
 
-import android.Manifest;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
-import android.os.IBinder;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity {
+import com.tanapakorn.speechlibrary.SpeechManager;
+import com.tanapakorn.truespeech.viewmodel.TextViewModel;
 
-    private static final String FRAGMENT_MESSAGE_DIALOG = "message_dialog";
+import java.util.ArrayList;
+import java.util.List;
 
-    private static final String STATE_RESULTS = "results";
 
-    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
-
-    private SpeechService mSpeechService;
-
-    private VoiceRecorder mVoiceRecorder;
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     // View references
-//    private TextView mStatus;
+    private RecyclerView mRvChatHistory;
     private TextView mTextResult;
-//    private ResultAdapter mAdapter;
-//    private RecyclerView mRecyclerView;
+
+    private SpeechManager mManager;
+
+    private ImageButton mMicBtn;
+    private ImageButton mMicCloseBtn;
 
     private Button audioFileBtn;
 
-    private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
+    private EditText mEditText;
+    private RecyclerAdapter rvAdapter;
 
-        @Override
-        public void onVoiceStart() {
-            showStatus(true);
-            if (mSpeechService != null) {
-                mSpeechService.startRecognizing(mVoiceRecorder.getSampleRate());
-            }
-        }
-
-        @Override
-        public void onVoice(byte[] data, int size) {
-            if (mSpeechService != null) {
-                mSpeechService.recognize(data, size);
-            }
-        }
-
-        @Override
-        public void onVoiceEnd() {
-            showStatus(false);
-            if (mSpeechService != null) {
-                mSpeechService.finishRecognizing();
-            }
-        }
-
-    };
-
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
-
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder binder) {
-            mSpeechService = SpeechService.from(binder);
-            mSpeechService.addListener(mSpeechServiceListener);
-//            mStatus.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            mSpeechService = null;
-        }
-
-    };
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        mTextResult = (TextView)findViewById(R.id.result);
-        audioFileBtn = (Button)findViewById(R.id.audio_file);
-
-        audioFileBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-//                if(mSpeechService == null){
-//                    Log.e("mmm", "onClick: asd");
-//                    return;
-//                }
-                mSpeechService.recognizeInputStream(getResources().openRawResource(R.raw.audio));
-            }
-        });
-    }
-
-    private final SpeechService.Listener mSpeechServiceListener = new SpeechService.Listener() {
+    private final SpeechManager.ServiceListener mSpeechServiceListener = new SpeechManager.ServiceListener() {
         @Override
         public void onSpeechRecognized(final String text, final boolean isFinal) {
-            if (isFinal) {
-                mVoiceRecorder.dismiss();
+            if(!isFinal){
+                return;
             }
             if (mTextResult != null && !TextUtils.isEmpty(text)) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-//                        if (isFinal) {
-//                            mText.setText(null);
-//                            mAdapter.addResult(text);
-//                            mRecyclerView.smoothScrollToPosition(0);
-//                        } else {
-//                            mText.setText(text);
-//                        }
+                        if(rvAdapter != null){
+                            rvAdapter.add(new TextViewModel(ChatContract.VIEW_TYPE_MY_TEXT).text(text));
+                        }
                         mTextResult.setText(text);
                     }
                 });
@@ -124,66 +55,87 @@ public class MainActivity extends AppCompatActivity {
     };
 
     @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        mRvChatHistory = (RecyclerView)findViewById(R.id.rvChatHistory);
+        audioFileBtn = (Button)findViewById(R.id.audio_file);
+        mTextResult = (TextView)findViewById(R.id.result);
+        mEditText = (EditText)findViewById(R.id.edit_text);
+        mMicBtn = (ImageButton)findViewById(R.id.push_to_talk_button);
+        mMicCloseBtn = (ImageButton)findViewById(R.id.push_to_talk_end_button);
+
+        mMicBtn.setVisibility(View.VISIBLE);
+        mMicCloseBtn.setVisibility(View.GONE);
+
+        audioFileBtn.setOnClickListener(this);
+        mMicBtn.setOnClickListener(this);
+        mMicCloseBtn.setOnClickListener(this);
+
+        rvAdapter = new RecyclerAdapter(this, generateMockup());
+        mRvChatHistory.setLayoutManager( new LinearLayoutManager(this));
+        mRvChatHistory.setAdapter(rvAdapter);
+
+        mManager = new SpeechManager(this, R.raw.credential);
+        mManager.addSpeechServiceListener( mSpeechServiceListener);
+        mManager.addStatusListener(new SpeechManager.StatusListener() {
+            @Override
+            public void onStatusChanged(int pStatus) {
+                switch(pStatus){
+                    case SpeechManager.STATE_IDLE:
+                        mEditText.setText(R.string.string_state_idle);
+                        break;
+                    case SpeechManager.STATE_RECORDING:
+                        mEditText.setText(R.string.string_listening);
+                        break;
+                    default:
+                        mEditText.setText("");
+                        break;
+                }
+            }
+        });
+    }
+
+    private List<ChatContract.ITextViewModel> generateMockup() {
+        List<ChatContract.ITextViewModel> list = new ArrayList<>();
+        list.add( new TextViewModel(ChatContract.VIEW_TYPE_MY_TEXT).text("what"));
+        list.add( new TextViewModel(ChatContract.VIEW_TYPE_YOUR_TEXT).text("the"));
+
+        return list;
+    }
+
+    @Override
     protected void onStart() {
-
         super.onStart();
-
-        // Prepare Cloud Speech API
-        bindService(new Intent(this, SpeechService.class), mServiceConnection, BIND_AUTO_CREATE);
-
-        // Start listening to voices
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED) {
-            startVoiceRecorder();
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                Manifest.permission.RECORD_AUDIO)) {
-            showPermissionMessageDialog();
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO},
-                    REQUEST_RECORD_AUDIO_PERMISSION);
-        }
+        mManager.startService();
     }
 
     @Override
     protected void onStop() {
-        // Stop listening to voice
-        stopVoiceRecorder();
-
-        // Stop Cloud Speech API
-        mSpeechService.removeListener(mSpeechServiceListener);
-        unbindService(mServiceConnection);
-        mSpeechService = null;
-
+        mManager.stopService();
         super.onStop();
     }
 
-    private void startVoiceRecorder() {
-        if (mVoiceRecorder != null) {
-            mVoiceRecorder.stop();
+    @Override
+    public void onClick(View v) {
+        if(mManager == null) {
+            return;
         }
-        mVoiceRecorder = new VoiceRecorder(mVoiceCallback);
-        mVoiceRecorder.start();
-    }
-
-    private void stopVoiceRecorder() {
-        if (mVoiceRecorder != null) {
-            mVoiceRecorder.stop();
-            mVoiceRecorder = null;
+        switch(v.getId()){
+            case R.id.audio_file:
+                mManager.recognizeInputStream(getResources().openRawResource(R.raw.audio));
+                break;
+            case R.id.push_to_talk_button:
+                mMicBtn.setVisibility(View.GONE);
+                mMicCloseBtn.setVisibility(View.VISIBLE);
+                mManager.startVoiceRecorder();
+                break;
+            case R.id.push_to_talk_end_button:
+                mMicBtn.setVisibility(View.VISIBLE);
+                mMicCloseBtn.setVisibility(View.GONE);
+                mManager.stopVoiceRecorder();
+                break;
         }
-    }
-
-    private void showStatus(final boolean hearingVoice) {
-//        runOnUiThread(new Runnable() {
-//            @Override
-//            public void run() {
-//                mStatus.setTextColor(hearingVoice ? mColorHearing : mColorNotHearing);
-//            }
-//        });
-    }
-
-    private void showPermissionMessageDialog() {
-        MessageDialogFragment
-                .newInstance(getString(R.string.permission_message))
-                .show(getSupportFragmentManager(), FRAGMENT_MESSAGE_DIALOG);
     }
 }

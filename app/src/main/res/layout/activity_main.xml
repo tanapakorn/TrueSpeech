@@ -4,7 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#dadada"
     tools:context="com.tanapakorn.truespeech.MainActivity">
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/rvChatHistory"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/linearLayout" />
 
     <TextView
         android:id="@+id/result"
@@ -19,9 +26,43 @@
         android:id="@+id/audio_file"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/string_audio_file" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="34dp"
-        android:text="@string/string_audio_file" />
+        android:padding="8dp"
+        android:id="@+id/linearLayout">
+
+        <EditText
+            android:id="@+id/edit_text"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent" />
+
+        <RelativeLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp">
+
+            <ImageButton
+                android:id="@+id/push_to_talk_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/string_audio_file"
+                android:background="@null"
+                app:srcCompat="@drawable/ic_mic_black_24dp" />
+
+            <ImageButton
+                android:id="@+id/push_to_talk_end_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:text="@string/string_audio_file"
+                app:srcCompat="@drawable/ic_block_black_24dp" />
+        </RelativeLayout>
+    </LinearLayout>
 
 </RelativeLayout>

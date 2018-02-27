@@ -5,4 +5,6 @@
     <string name="listening">Listening…</string>
     <string name="load_file">Load file</string>
     <string name="string_audio_file">Audio File</string>
+    <string name="string_listening">Listening...</string>
+    <string name="string_state_idle">STATE_IDLE</string>
 </resources>
