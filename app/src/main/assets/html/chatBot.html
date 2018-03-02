@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chat bot</title>
+    <style>
+    * { 
+        font-family:tahoma,Verdana, Arial, sans-serif;
+        font-size:12px; 
+        padding:0px;
+        margin:0px;
+    }
+    p { 
+      line-height:18px; 
+    }
+
+    #content { 
+      padding:5px; 
+      background:white;
+      overflow-y: auto; 
+      border:0px solid #CCC; border-radius:0px;
+      margin-top:10px; 
+      height:90vh;
+      width:100%;
+      flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    ::-webkit-scrollbar {
+        width: 0px;  /* remove scrollbar space */
+        background: transparent;  /* optional: just make scrollbar invisible */
+    }
+    #input { 
+      border-radius:2px; border:1px solid #ccc;
+      margin-top:10px; 
+      padding:5px; 
+      width:400px;
+    }
+    #status { 
+      width:auto;
+      display:block;
+      float:left;
+      margin-top:15px; 
+    }
+    .lineLeft{
+      line-height:33px; 
+      width: 95%;
+      text-align: left;
+    }
+    .lineRight{
+      line-height:33px; 
+      width: 95%;
+      text-align: right;
+    }
+    .avatar{
+      line-height:33px; 
+      width: 33px; 
+      height:30px; 
+      vertical-align: middle; 
+      padding-right: 10px; padding-bottom: 8px;
+    }
+    .talk-bubble {
+      margin: 5px;
+      display: inline-block;
+      position: relative;
+      height: auto;
+      width: auto;
+      background-color: #ecf1f1;
+      border-radius: 30px;
+      border-color: #fffbfb;
+      border-style: solid;
+      border-width: 1px;
+      padding-left: 8px;
+      padding-right: 8px;
+      min-width: 25px;
+      min-height: 10px;
+      text-align: center;
+    }
+
+    a:link {
+      color:#000;
+      text-decoration: none;
+    }
+    a:visited {
+      color:#000;
+    }
+    a:hover {
+      color:#33F;
+    }
+    .button {
+      background: -webkit-linear-gradient(top,#008dfd 0,#0370ea 100%);
+      border: 1px solid #076bd2;
+      border-radius: 3px;
+      color: #fff;
+      display: none;
+      font-size: 13px;
+      font-weight: bold;
+      line-height: 1.3;
+      padding: 8px 25px;
+      text-align: center;
+      text-shadow: 1px 1px 1px #076bd2;
+      letter-spacing: normal;
+    }
+    .center {
+      padding: 10px;
+      text-align: center;
+    }
+    .final {
+      color: black;
+      padding-right: 3px; 
+    }
+    .interim {
+      color: gray;
+    }
+    .info {
+      font-size: 14px;
+      text-align: center;
+      color: #777;
+      display: none;
+    }
+    .right {
+      float: right;
+    }
+    .sidebyside {
+      display: inline-block;
+      width: 45%;
+      min-height: 40px;
+      text-align: left;
+      vertical-align: top;
+    }
+    #headline {
+      font-size: 40px;
+      font-weight: 300;
+    }
+    #info {
+      font-size: 20px;
+      text-align: center;
+      color: #777;
+      visibility: hidden;
+    }
+    #results {
+      font-size: 14px;
+      font-weight: bold;
+      border: 1px solid #ddd;
+      padding: 15px;
+      text-align: left;
+      min-height: 150px;
+    }
+    #start_button {
+      border: 0;
+      background-color:transparent;
+      padding: 0;
+    }
+   #start_img{
+    width:100px;
+    height:100px;
+   }
+  </style>
+  <script src="jquery.min.js"></script>
+  <script>
+    //Gobal var
+    var chatServer = 'ws://35.187.225.127:1337';
+    var userName = 'Bhong';
+    var password = 'Bhong';
+    var language = 'th'; 
+    var connection; 
+    var content;
+    var statusText;
+    var inputText;
+    var start_button;
+    var stt_text;
+    
+    function init(){
+     
+      content = document.getElementById("content");
+      statusText =   document.getElementById("status");
+      inputText =  document.getElementById("input");
+
+      window.WebSocket = window.WebSocket || window.MozWebSocket;
+      // if browser doesn't support WebSocket, just show
+      // some notification and exit
+      if (!window.WebSocket) {
+        updateStatus('Sorry, but your browser doesn\'t support WebSocket.');
+      }
+      // open connection
+      connection = new WebSocket(chatServer);
+      
+      connection.onopen = function () {
+        // first we want users to enter their names
+              // send the message as an ordinary text
+        var obj = {
+          type:'login',
+          data: {username:userName,password:password},
+          lng: language
+        };
+        connection.send(JSON.stringify(obj));
+      };
+
+      connection.onerror = function (error) {
+        // just in there were some problems with connection...
+        updateStatus('Sorry, but there\'s some problem with your ' + 'connection or the server is down.');
+      };
+
+      connection.onmessage = function (message) {
+        try {
+          var json = JSON.parse(message.data);
+        } catch (e) {
+          console.log('Invalid JSON: ', message.data);
+          return;
+        }
+        if (json.type === 'login') { 
+            if (json.data.status == 200){
+              //connection.close();
+              //inputText.removeAttribute("disabled");
+              //window.webkit.messageHandlers.notification.postMessage(json);
+            }
+            updateStatus(json.data.msg);
+        }else{
+            console.log('receive: ', message.data);
+            botResponse();
+            var messages = json.data.messages;
+            for (var i=0; i < messages.length; i++){
+              var message = messages[i];
+              if ("text" == message.type) {
+                  content.appendChild(leftTalkBuble(message.text));
+                  answer(message.text);
+              }else if ("widget" == message.type) {
+                  content.appendChild(widget(message.url));
+              }
+            }
+            //content.scrollTop = content.scrollHeight +20000;
+            godown();
+        }
+      };
+      connection.onclose = function(evt) {
+        console.log('close');
+        //inputText.setAttribute("disabled","disabled");
+      };
+    }
+
+    function updateStatus(text){
+      statusText.innerHTML = text;
+    }
+
+  /**
+   * Send message when user presses Enter key
+   */
+  function text_keydown(e) {
+    if (e.keyCode === 13) {
+      var text = inputText.value;
+      if (!text) {
+        return;
+      }
+      // send the message as an ordinary text
+       var obj = {
+          type:'message',
+          data: {msg:text.toLowerCase()},
+          lng: language
+        };
+      echoMessage(text);
+      waittingForResponse();
+      connection.send(JSON.stringify(obj));
+      inputText.value = '';
+    }
+  };
+  /**
+   * This method is optional. If the server wasn't able to
+   * respond to the in 3 seconds then show some error message 
+   * to notify the user that something is wrong.
+   */
+  setInterval(function() {
+    if (connection.readyState !== 1) {
+      updateStatus('Error Unable to communicate with the WebSocket server.');
+      inputText.setAttribute("disabled","disabled");
+    init();
+    }
+  }, 3000);
+
+
+   function echoMessage(message) {
+       if(stt_text){
+          stt_text.textContent = message;
+       }else{
+           content.appendChild(rightTalkBuble(message));
+           godown();
+       }
+  }
+  
+  function rightTalkBuble(message){
+    var divOutside = document.createElement('div');
+    divOutside.setAttribute("class", "lineRight");
+    var divInside = document.createElement('div');
+    divInside.setAttribute("class", "talk-bubble");
+    divInside.style.backgroundColor = '#cac7c7';
+    divInside.style.borderColor = 'gray';
+    divInside.appendChild(document.createTextNode(message));
+    stt_text = divInside;
+    divOutside.appendChild(divInside);
+    return divOutside;
+  }
+
+  function leftTalkBuble(message){
+    var divOutside = document.createElement('div');
+    divOutside.setAttribute("class", "lineLeft");
+    var avatar = document.createElement('img');
+    avatar.setAttribute("class", "avatar");
+    avatar.src = "http://172.17.180.34/bot/avatar.png";
+    var divInside = document.createElement('div');
+    divInside.setAttribute("class", "talk-bubble");
+    divInside.appendChild(document.createTextNode(message));
+    divOutside.appendChild(avatar);
+    divOutside.appendChild(divInside);
+    return divOutside;
+  }
+
+  function widget(url){
+    var object = document.createElement('object');
+    object.setAttribute("data", url);
+    object.style.width= '100%';
+    object.onload = function () {
+            //recalculate height
+            try{
+                object.style.height = object.contentDocument.body.getBoundingClientRect().height+ 'px';
+                godown();
+            }catch(e){
+                //
+            }
+        };
+    return object;
+  }
+
+  function waittingForResponse(){
+    var div = document.createElement('div');
+    div.setAttribute("id", "waiting");
+    div.setAttribute("class", "lineLeft");
+    var avatar = document.createElement('img');
+    avatar.setAttribute("class", "avatar");
+    avatar.src = "http://172.17.180.34/bot/avatar.png";
+    var texting = document.createElement('img');
+    texting.setAttribute("id", "texting");
+    texting.setAttribute("class", "talk-bubble");
+    texting.src = "http://172.17.180.34/bot/waiting-text-response.gif";
+    texting.style.verticalAlign = "middle";
+    texting.style.paddingLeft = "10px";
+    texting.style.paddingRight = "10px";
+    div.appendChild(avatar);
+    div.appendChild(texting);
+    content.appendChild(div);
+    content.scrollTop = content.scrollHeight ;
+    /*
+    setTimeout(function() {
+      var waiting = document.getElementById("waiting");
+      if(waiting) {
+        document.getElementById("texting").remove();
+        var divInside = document.createElement('div');
+        divInside.setAttribute("class", "talk-bubble");
+        divInside.appendChild(document.createTextNode('กรุณารอสักคูร กำลังตรวจสอบ ...')); 
+        waiting.appendChild(divInside);
+        godown();
+      }
+    }, 2000);*/
+  }
+
+  function botResponse() {
+    document.getElementById("waiting").remove();
+  }
+
+  function godown(){
+    var c = $('#content');
+    c.animate({ scrollTop:c.prop("scrollHeight")}, 1000);
+  }
+
+
+  </script>
+  </head>
+  <body onload="init()">
+      <span id="status">Connecting...</span>
+    <div id="content"></div>
+    
+    <!--
+    <div class="center">
+      <button id="start_button" onclick="startButton(event)">
+        <img id="start_img" src="mic.gif" alt="Start">
+      </button>
+      <div>
+      <span id="status">Connecting...</span>
+      <input type="text" id="input" disabled="disabled" onkeydown="text_keydown(event)"/>
+      </div>
+    </div>
+    !-->
+</body>
+<script>
+
+//TTS STT
+/*
+var recognizing = false;
+var msg = false;
+var voices;
+var ignore_onend;
+var start_timestamp;
+start_button =  document.getElementById("start_button");
+//webkitSpeechRecognition
+if (!('webkitSpeechRecognition' in window)) {
+  //upgrade();
+  alert('not support SpeechRecognition');
+} else {
+  start_button.style.display = 'inline-block';
+  var recognition = new webkitSpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onstart = function() {
+    recognizing = true;
+    console.log('info_speak_now');
+    start_img.src = 'mic-animate.gif';
+  };
+
+  recognition.onerror = function(event) {
+    if (event.error == 'no-speech') {
+      start_img.src = 'mic.gif';
+      console.log('info_no_speech');
+      ignore_onend = true;
+    }
+    if (event.error == 'audio-capture') {
+      start_img.src = 'mic.gif';
+      console.log('info_no_microphone');
+      ignore_onend = true;
+    }
+    if (event.error == 'not-allowed') {
+      if (event.timeStamp - start_timestamp < 100) {
+        console.log('info_blocked');
+      } else {
+        console.log('info_denied');
+      }
+      ignore_onend = true;
+    }
+  };
+
+
+
+  recognition.onend = function() {
+    recognizing = false;
+    if (ignore_onend) {
+      console.log('onend');
+      return;
+    }
+    start_img.src = 'mic.gif';
+    if (!final_transcript) {
+      console.log('info_start');
+      return;
+    }
+  };
+
+  recognition.onresult = function(event) {
+    var interim_transcript = '';
+    for (var i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        final_transcript = event.results[i][0].transcript;
+        //echo(final_transcript);
+        console.log('ask: ' + final_transcript);
+        ask(final_transcript);
+
+      } else {
+        //interim_transcript += event.results[i][0].transcript;
+      }
+    }
+    //final_transcript = capitalize(final_transcript);
+    //final_span.innerHTML = linebreak(final_transcript);
+    //interim_span.innerHTML = linebreak(interim_transcript);
+
+    //console.log('final_transcript: ' + linebreak(final_transcript));
+    //console.log('interim_transcript: '+linebreak(interim_transcript));
+  };
+}
+
+function startButton(event) {
+  if (recognizing) {
+    recognition.stop();
+    return;
+  }
+  final_transcript = '';
+  recognition.lang = 'th-TH';//'zh-cmn-Hans-CN';//'cmn-Hans-CN';//'en-EN';//'th-TH';
+  recognition.start();
+  ignore_onend = false;
+  //final_span.innerHTML = '';
+  //interim_span.innerHTML = '';
+  start_img.src = 'mic-slash.gif';
+  start_timestamp = event.timeStamp;
+}
+
+var two_line = /\n\n/g;
+var one_line = /\n/g;
+function linebreak(s) {
+  return s.replace(two_line, '<p></p>').replace(one_line, '<br>');
+}
+
+var first_char = /\S/;
+function capitalize(s) {
+  return s.replace(first_char, function(m) { return m.toUpperCase(); });
+}
+
+var speechSynthesis
+if (!('speechSynthesis' in window)) {
+  //upgrade();
+    alert('not support speechSynthesis');
+} else {
+  msg = new SpeechSynthesisUtterance();
+  voices = window.speechSynthesis.getVoices();
+  //msg.voice = voices[1]; // Note: some voices don't support altering params
+  //msg.voiceURI = 'native';
+  //msg.volume = 1; // 0 to 1
+  //msg.rate = 1; // 0.1 to 10
+  //msg.pitch = 2; //0 to 2
+  //msg.lang = 'th-TH';//'zh-cmn-Hans-CN';//'cmn-Hans-CN';//'en-EN';//
+
+  msg.onend = function(e) {
+    console.log('Finished in ' + event.elapsedTime + ' seconds.');
+    try{
+      recognition.start();    
+    }catch (e){}
+    
+  };
+} */
+
+function ask(text){
+  console.log('' + text);
+  /*msg.text = text;
+  recognition.stop();
+  speechSynthesis.speak(msg);*/
+  // send the message as an ordinary text
+  var obj = {
+    type:'message',
+    data: {msg:text.toLowerCase()},
+    lng: "th"
+  };
+  echoMessage(text);
+  //waittingForResponse();
+  //connection.send(JSON.stringify(obj));
+}
+function send(){
+   // window.webkit.messageHandlers.notification.postMessage({method:"stopSTT"});
+   //msg:text.toLowerCase()
+    var text = stt_text.textContent;
+    stt_text = false;
+    var obj = {
+        type:'message',
+        data: {msg:text},
+        lng: "th"
+    };
+    waittingForResponse();
+    connection.send(JSON.stringify(obj));
+}
+function answer(text){
+  /*
+  msg.lang = 'en-EN';
+  msg.text = text;
+  try{
+    recognition.stop();  
+  }catch (e){}
+  
+  speechSynthesis.speak(msg);
+  */
+  window.webkit.messageHandlers.notification.postMessage({method:"say",data:{message:text,lang:"en-EN"}});
+}
+
+function askfromiOSVoice(text,pIndex,cIndex){
+    //window.webkit.messageHandlers.notification.postMessage({method:"stopSTT"});
+    text = text.trim();
+    //text = text.substring(pIndex,cIndex);
+    ask(text)
+}
+
+
+</script>
+</html>

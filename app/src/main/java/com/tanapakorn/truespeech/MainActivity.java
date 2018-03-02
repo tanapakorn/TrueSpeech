@@ -1,6 +1,5 @@
 package com.tanapakorn.truespeech;
 
-import android.content.Context;
 import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -22,11 +21,11 @@ import java.util.List;
 import java.util.Locale;
 
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, TextToSpeech.OnInitListener{
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     // View references
     private RecyclerView mRvChatHistory;
-    private TextView mTextResult;
+    private TextView mStatus;
 
     private SpeechManager mManager;
 
@@ -38,14 +37,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private EditText mEditText;
     private RecyclerAdapter rvAdapter;
 
-    private TextToSpeech mTTS;
-
-    private TextToSpeech.OnInitListener mTtsListener = new TextToSpeech.OnInitListener() {
-        @Override
-        public void onInit(int status) {
-
-        }
-    };
+    private String TAG = "MainActivity";
 
     private final SpeechManager.ServiceListener mSpeechServiceListener = new SpeechManager.ServiceListener() {
         @Override
@@ -53,17 +45,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(!isFinal){
                 return;
             }
-            if (mTextResult != null && !TextUtils.isEmpty(text)) {
+            if (mStatus != null && !TextUtils.isEmpty(text)) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         if(rvAdapter != null){
                             rvAdapter.add(new TextViewModel(ChatContract.VIEW_TYPE_MY_TEXT).text(text));
-                            mTTS.speak( text, TextToSpeech.QUEUE_ADD, null);
+                            mRvChatHistory.requestLayout();
                         }
-
-                        mTextResult.setText(text);
-//                        mEditText.setText(text);
                     }
                 });
             }
@@ -73,15 +62,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-
-        mTTS = new TextToSpeech(this, mTtsListener);
-        mTTS.setLanguage(Locale.US);
+        setContentView(R.layout.activity_main_webview);
 
         mRvChatHistory = (RecyclerView)findViewById(R.id.rvChatHistory);
         audioFileBtn = (Button)findViewById(R.id.audio_file);
-        mTextResult = (TextView)findViewById(R.id.result);
+        mStatus = (TextView)findViewById(R.id.result);
 //        mEditText = (EditText)findViewById(R.id.edit_text);
         mMicBtn = (ImageButton)findViewById(R.id.push_to_talk_button);
         mMicCloseBtn = (ImageButton)findViewById(R.id.push_to_talk_end_button);
@@ -98,19 +83,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mRvChatHistory.setAdapter(rvAdapter);
 
         mManager = new SpeechManager(this, R.raw.credential);
+        mManager.echo(true);
         mManager.addSpeechServiceListener( mSpeechServiceListener);
         mManager.addStatusListener(new SpeechManager.StatusListener() {
             @Override
             public void onStatusChanged(int pStatus) {
                 switch(pStatus){
                     case SpeechManager.STATE_IDLE:
-//                        mEditText.setText(R.string.string_state_idle);
+                        mStatus.setText("");
+//                        mStatus.setText(R.string.string_state_idle);
                         break;
                     case SpeechManager.STATE_RECORDING:
-//                        mEditText.setText(R.string.string_listening);
+                        mStatus.setText(R.string.string_listening);
                         break;
                     default:
-//                        mEditText.setText("");
+//                        mStatus.setText("");
                         break;
                 }
             }
@@ -119,8 +106,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private List<ChatContract.ITextViewModel> generateMockup() {
         List<ChatContract.ITextViewModel> list = new ArrayList<>();
-        list.add( new TextViewModel(ChatContract.VIEW_TYPE_MY_TEXT).text("what"));
-        list.add( new TextViewModel(ChatContract.VIEW_TYPE_YOUR_TEXT).text("the"));
+        list.add( new TextViewModel(ChatContract.VIEW_TYPE_YOUR_TEXT).text("Hello !"));
 
         return list;
     }
@@ -157,10 +143,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mManager.stopVoiceRecorder();
                 break;
         }
-    }
-
-    @Override
-    public void onInit(int status) {
-
     }
 }
